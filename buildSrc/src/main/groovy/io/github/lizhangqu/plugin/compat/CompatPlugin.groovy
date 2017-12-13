@@ -12,6 +12,7 @@ class CompatPlugin implements Plugin<Project> {
     @Override
     void apply(Project project) {
         this.project = project
+        project.ext.isAapt2EnabledCompat = this.&isAapt2EnabledCompat
     }
 
     static <T> T resolveEnumValue(String value, Class<T> type) {
@@ -30,6 +31,30 @@ class CompatPlugin implements Plugin<Project> {
         constructor.setAccessible(true)
         def projectOptions = constructor.newInstance(project)
         return projectOptions
+    }
+
+    /**
+     * 导出aapt2是否开启的兼容方法，build.gradle中apply后可直接使用isAapt2EnabledCompat()
+     */
+    boolean isAapt2EnabledCompat() {
+        boolean aapt2Enabled = false
+        try {
+            def projectOptions = getProjectOptions()
+            Object enumValue = resolveEnumValue("ENABLE_AAPT2", Class.forName("com.android.build.gradle.options.BooleanOption"))
+            aapt2Enabled = projectOptions.get(enumValue)
+        } catch (Exception e) {
+            try {
+                //gradle 2.3.3的方法
+                Class classAndroidGradleOptions = Class.forName("com.android.build.gradle.AndroidGradleOptions")
+                def isAapt2Enabled = classAndroidGradleOptions.getDeclaredMethod("isAapt2Enabled", Project.class)
+                isAapt2Enabled.setAccessible(true)
+                aapt2Enabled = isAapt2Enabled.invoke(null, project)
+            } catch (Exception e1) {
+                //都取不到表示还不支持
+                aapt2Enabled = false
+            }
+        }
+        return aapt2Enabled
     }
 }
 
