@@ -1,6 +1,12 @@
 apply plugin: 'com.android.application'
 apply plugin: 'com.android.compat'
 
+
+project.logger.error "[CompatPlugin] isAapt2EnabledCompat:${isAapt2EnabledCompat()}"
+project.logger.error "[CompatPlugin] isAapt2JniEnabledCompat:${isAapt2JniEnabledCompat()}"
+project.logger.error "[CompatPlugin] isAapt2DaemonModeEnabledCompat:${isAapt2DaemonModeEnabledCompat()}"
+
+
 android {
     compileSdkVersion 26
     buildToolsVersion '26.0.2'
