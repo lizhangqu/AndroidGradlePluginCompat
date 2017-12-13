@@ -15,6 +15,7 @@ class CompatPlugin implements Plugin<Project> {
         project.ext.isAapt2EnabledCompat = this.&isAapt2EnabledCompat
         project.ext.isAapt2JniEnabledCompat = this.&isAapt2JniEnabledCompat
         project.ext.isAapt2DaemonModeEnabledCompat = this.&isAapt2DaemonModeEnabledCompat
+        project.ext.getAndroidGradlePluginVersionCompat = this.&getAndroidGradlePluginVersionCompat
     }
 
     static <T> T resolveEnumValue(String value, Class<T> type) {
@@ -91,6 +92,13 @@ class CompatPlugin implements Plugin<Project> {
             }
         }
         return aapt2DaemonEnabled
+    }
+
+    /**
+     * 导出获得android gradle plugin插件的版本号，build.gradle中apply后可直接使用getAndroidGradlePluginVersionCompat()
+     */
+    String getAndroidGradlePluginVersionCompat() {
+
     }
 }
 
