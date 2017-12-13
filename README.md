@@ -34,5 +34,5 @@ if (isAapt2DaemonModeEnabledCompat()) {
 ### 获取 android gradle plugin 版本号
 
 ```
-
+String androidGradlePluginVersion = getAndroidGradlePluginVersionCompat()
 ```

@@ -97,8 +97,18 @@ class CompatPlugin implements Plugin<Project> {
     /**
      * 导出获得android gradle plugin插件的版本号，build.gradle中apply后可直接使用getAndroidGradlePluginVersionCompat()
      */
+    @SuppressWarnings("GrMethodMayBeStatic")
     String getAndroidGradlePluginVersionCompat() {
-
+        String version = null
+        try {
+            Class versionModel = Class.forName("com.android.builder.model.Version")
+            def versionFiled = versionModel.getDeclaredField("ANDROID_GRADLE_PLUGIN_VERSION")
+            versionFiled.setAccessible(true)
+            version = versionFiled.get(null)
+        } catch (Exception e) {
+            version = "unknown"
+        }
+        return version
     }
 }
 

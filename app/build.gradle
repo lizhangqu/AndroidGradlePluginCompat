@@ -5,6 +5,7 @@ apply plugin: 'com.android.compat'
 project.logger.error "[CompatPlugin] isAapt2EnabledCompat:${isAapt2EnabledCompat()}"
 project.logger.error "[CompatPlugin] isAapt2JniEnabledCompat:${isAapt2JniEnabledCompat()}"
 project.logger.error "[CompatPlugin] isAapt2DaemonModeEnabledCompat:${isAapt2DaemonModeEnabledCompat()}"
+project.logger.error "[CompatPlugin] getAndroidGradlePluginVersionCompat:${getAndroidGradlePluginVersionCompat()}"
 
 
 android {
