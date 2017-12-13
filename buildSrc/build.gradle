@@ -29,7 +29,7 @@ dependencies {
     compile "commons-io:commons-io:2.6"
     compile 'commons-codec:commons-codec:1.10'
 
-    File localFile = project.rootProject.file('local.properties')
+    File localFile = project.rootProject.file('../local.properties')
     Properties extProperties = new Properties()
     if (localFile.exists()) {
         extProperties.load(localFile.newDataInputStream())
