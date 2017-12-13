@@ -22,5 +22,14 @@ class CompatPlugin implements Plugin<Project> {
         }
         return null
     }
+
+
+    def getProjectOptions() {
+        Class classProjectOptions = Class.forName("com.android.build.gradle.options.ProjectOptions")
+        def constructor = classProjectOptions.getDeclaredConstructor(Project.class)
+        constructor.setAccessible(true)
+        def projectOptions = constructor.newInstance(project)
+        return projectOptions
+    }
 }
 
