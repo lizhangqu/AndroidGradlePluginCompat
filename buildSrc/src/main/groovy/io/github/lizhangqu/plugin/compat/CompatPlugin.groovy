@@ -14,5 +14,13 @@ class CompatPlugin implements Plugin<Project> {
         this.project = project
     }
 
+    static <T> T resolveEnumValue(String value, Class<T> type) {
+        for (T constant : type.getEnumConstants()) {
+            if (constant.toString().equalsIgnoreCase(value)) {
+                return constant
+            }
+        }
+        return null
+    }
 }
 
