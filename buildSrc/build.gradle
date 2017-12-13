@@ -43,3 +43,33 @@ dependencies {
     compile "com.android.tools.build:gradle:${androidGradlePluginVersion}"
 
 }
+
+
+//remove install task compile 'com.android.tools.build:gradle:$androidGradlePluginVersion'
+install {
+    repositories {
+        mavenInstaller {
+            pom {
+                whenConfigured { p ->
+                    p.dependencies = p.dependencies.findAll {
+                        dep -> (dep.groupId != "com.android.tools.build" && dep.artifactId != "gradle")
+                    }
+                }
+            }
+        }
+    }
+}
+//remove uploadArchives task compile 'com.android.tools.build:gradle:$androidGradlePluginVersion'
+uploadArchives {
+    repositories {
+        mavenDeployer {
+            pom {
+                whenConfigured { p ->
+                    p.dependencies = p.dependencies.findAll {
+                        dep -> (dep.groupId != "com.android.tools.build" && dep.artifactId != "gradle")
+                    }
+                }
+            }
+        }
+    }
+}
