@@ -13,6 +13,7 @@ class CompatPlugin implements Plugin<Project> {
     void apply(Project project) {
         this.project = project
         project.ext.isAapt2EnabledCompat = this.&isAapt2EnabledCompat
+        project.ext.isAapt2JniEnabledCompat = this.&isAapt2JniEnabledCompat
     }
 
     static <T> T resolveEnumValue(String value, Class<T> type) {
@@ -55,6 +56,23 @@ class CompatPlugin implements Plugin<Project> {
             }
         }
         return aapt2Enabled
+    }
+
+    /**
+     * 导出aapt2Jni是否开启的兼容方法，build.gradle中apply后可直接使用isAapt2JniEnabledCompat()
+     */
+    boolean isAapt2JniEnabledCompat() {
+        boolean aapt2JniEnabled = false
+        if (isAapt2EnabledCompat()) {
+            try {
+                def projectOptions = getProjectOptions()
+                def enumValue = resolveEnumValue("ENABLE_IN_PROCESS_AAPT2", Class.forName("com.android.build.gradle.options.BooleanOption"))
+                aapt2JniEnabled = projectOptions.get(enumValue)
+            } catch (Exception e) {
+                aapt2JniEnabled = false
+            }
+        }
+        return aapt2JniEnabled
     }
 }
 
