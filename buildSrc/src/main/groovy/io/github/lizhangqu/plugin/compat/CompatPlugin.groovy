@@ -14,6 +14,7 @@ class CompatPlugin implements Plugin<Project> {
         this.project = project
         project.ext.isAapt2EnabledCompat = this.&isAapt2EnabledCompat
         project.ext.isAapt2JniEnabledCompat = this.&isAapt2JniEnabledCompat
+        project.ext.isAapt2DaemonModeEnabledCompat = this.&isAapt2DaemonModeEnabledCompat
     }
 
     static <T> T resolveEnumValue(String value, Class<T> type) {
@@ -73,6 +74,23 @@ class CompatPlugin implements Plugin<Project> {
             }
         }
         return aapt2JniEnabled
+    }
+
+    /**
+     * 导出aapt2DaemonMode是否开启的兼容方法，build.gradle中apply后可直接使用isAapt2DaemonModeEnabledCompat()
+     */
+    boolean isAapt2DaemonModeEnabledCompat() {
+        boolean aapt2DaemonEnabled = false
+        if (isAapt2EnabledCompat()) {
+            try {
+                def projectOptions = getProjectOptions()
+                def enumValue = resolveEnumValue("ENABLE_DAEMON_MODE_AAPT2", Class.forName("com.android.build.gradle.options.BooleanOption"))
+                aapt2DaemonEnabled = projectOptions.get(enumValue)
+            } catch (Exception e) {
+                aapt2DaemonEnabled = false
+            }
+        }
+        return aapt2DaemonEnabled
     }
 }
 
