@@ -16,6 +16,7 @@ class CompatPlugin implements Plugin<Project> {
         project.ext.isAapt2JniEnabledCompat = this.&isAapt2JniEnabledCompat
         project.ext.isAapt2DaemonModeEnabledCompat = this.&isAapt2DaemonModeEnabledCompat
         project.ext.getAndroidGradlePluginVersionCompat = this.&getAndroidGradlePluginVersionCompat
+        project.ext.isJenkins = this.&isJenkins
     }
 
     static <T> T resolveEnumValue(String value, Class<T> type) {
@@ -109,6 +110,19 @@ class CompatPlugin implements Plugin<Project> {
             version = "unknown"
         }
         return version
+    }
+
+    /**
+     * 导出是否在jenkins环境中,build.gradle中apply后可直接使用isJenkins()
+     */
+    @SuppressWarnings("GrMethodMayBeStatic")
+    boolean isJenkins() {
+        Map<String, String> environmentMap = System.getenv()
+        boolean result = false
+        if (environmentMap != null && environmentMap.containsKey("JOB_NAME") && environmentMap.containsKey("BUILD_NUMBER")) {
+            result = true
+        }
+        return result
     }
 }
 

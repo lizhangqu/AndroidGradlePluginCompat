@@ -36,3 +36,9 @@ if (isAapt2DaemonModeEnabledCompat()) {
 ```
 String androidGradlePluginVersion = getAndroidGradlePluginVersionCompat()
 ```
+
+### 是否在jenkins环境中
+
+```
+boolean onJenkins = isJenkins()
+```
