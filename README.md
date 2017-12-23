@@ -4,6 +4,7 @@
 ### 在com.android.application中使用provided aar功能
 
 首先调用一遍
+
 ```
 providedAarCompat()
 ```
@@ -15,6 +16,13 @@ dependencies {
     providedAar 'com.tencent.tinker:tinker-android-lib:1.9.1'
 }
 ```
+
+目前只支持如下版本
+ - android gradle plugin 2.2.3
+ - android gradle plugin 2.3.3
+ - android gradle plugin 3.0.0
+ - android gradle plugin 3.0.1
+ - android gradle plugin 3.1.0-alpha01 ~ 3.1.0-alpha06
 
 ### aapt2是否开启
 
