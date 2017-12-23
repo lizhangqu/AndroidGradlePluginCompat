@@ -8,6 +8,7 @@ project.logger.error "[CompatPlugin] isAapt2DaemonModeEnabledCompat:${isAapt2Dae
 project.logger.error "[CompatPlugin] getAndroidGradlePluginVersionCompat:${getAndroidGradlePluginVersionCompat()}"
 project.logger.error "[CompatPlugin] isJenkins:${isJenkins()}"
 
+providedCompat()
 
 android {
     compileSdkVersion 26
@@ -36,5 +37,9 @@ dependencies {
     compile 'com.android.support:appcompat-v7:26.1.0'
     compile 'com.android.support.constraint:constraint-layout:1.0.2'
     testCompile 'junit:junit:4.12'
+
+    providedAar 'com.tencent.tinker:tinker-android-lib:1.9.1'
+
+
 }
 
