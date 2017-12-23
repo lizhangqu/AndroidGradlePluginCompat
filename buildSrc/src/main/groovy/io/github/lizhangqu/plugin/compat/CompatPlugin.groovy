@@ -24,7 +24,7 @@ class CompatPlugin implements Plugin<Project> {
         project.ext.isAapt2DaemonModeEnabledCompat = this.&isAapt2DaemonModeEnabledCompat
         project.ext.getAndroidGradlePluginVersionCompat = this.&getAndroidGradlePluginVersionCompat
         project.ext.isJenkins = this.&isJenkins
-        project.ext.providedCompat = this.&providedCompat
+        project.ext.providedAarCompat = this.&providedAarCompat
     }
 
     static <T> T resolveEnumValue(String value, Class<T> type) {
@@ -133,13 +133,13 @@ class CompatPlugin implements Plugin<Project> {
         return result
     }
 
-    boolean providedCompatRun = false
+    boolean providedAarCompat = false
 
-    void providedCompat() {
-        if (providedCompatRun) {
+    void providedAarCompat() {
+        if (providedAarCompat) {
             return
         }
-        providedCompatRun = true
+        providedAarCompat = true
         if (!project.getPlugins().hasPlugin("com.android.application")) {
             return
         }

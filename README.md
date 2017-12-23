@@ -5,7 +5,7 @@
 
 首先调用一遍
 ```
-providedCompat()
+providedAarCompat()
 ```
 
 然后就可以正常使用providedAar了，如

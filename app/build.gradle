@@ -9,7 +9,7 @@ project.logger.error "[CompatPlugin] getAndroidGradlePluginVersionCompat:${getAn
 project.logger.error "[CompatPlugin] isJenkins:${isJenkins()}"
 
 //启用providedAar功能
-providedCompat()
+providedAarCompat()
 
 android {
     compileSdkVersion 26
