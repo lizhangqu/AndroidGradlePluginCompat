@@ -8,6 +8,7 @@ project.logger.error "[CompatPlugin] isAapt2DaemonModeEnabledCompat:${isAapt2Dae
 project.logger.error "[CompatPlugin] getAndroidGradlePluginVersionCompat:${getAndroidGradlePluginVersionCompat()}"
 project.logger.error "[CompatPlugin] isJenkins:${isJenkins()}"
 
+//启用providedAar功能
 providedCompat()
 
 android {
