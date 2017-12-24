@@ -133,14 +133,11 @@ class CompatPlugin implements Plugin<Project> {
         return result
     }
 
-    boolean providedAarCompat = false
-
     void providedAarCompat() {
-        if (providedAarCompat) {
+        if (!project.getPlugins().hasPlugin("com.android.application")) {
             return
         }
-        providedAarCompat = true
-        if (!project.getPlugins().hasPlugin("com.android.application")) {
+        if (project.getConfigurations().findByName("providedAar") != null) {
             return
         }
         Configuration providedConfiguration = project.getConfigurations().findByName("provided")
