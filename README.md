@@ -18,11 +18,10 @@ dependencies {
 ```
 
 目前只支持如下版本
- - android gradle plugin 2.2.3
- - android gradle plugin 2.3.3
- - android gradle plugin 3.0.0
- - android gradle plugin 3.0.1
- - android gradle plugin 3.1.0-alpha01 ~ 3.1.0-alpha06
+ - android gradle plugin 2.2.0+
+ - android gradle plugin 2.3.0+
+ - android gradle plugin 3.0.0+
+ - android gradle plugin 3.1.0+
 
 ### aapt2是否开启
 
