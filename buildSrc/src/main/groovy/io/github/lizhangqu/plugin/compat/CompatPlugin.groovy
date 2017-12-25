@@ -423,7 +423,7 @@ class CompatPlugin implements Plugin<Project> {
 
             def resolveDependencies = { Project project, boolean offline ->
                 //遍历providedAar的所有依赖
-                providedAarConfiguration.getDependencies().each {
+                project.getConfigurations().getByName("providedAar").getDependencies().each {
                     def dependency ->
                         boolean matchArtifact = resolveArtifactFromRepositories(project, dependency, offline, false)
                         if (!matchArtifact && offline) {
@@ -444,6 +444,7 @@ class CompatPlugin implements Plugin<Project> {
                 void beforeResolve(ResolvableDependencies dependencies) {
                     //此回调会多次进入，我们只需要解析一次，因此只要进入，就remove，然后执行我们的解析操作
                     project.gradle.removeListener(this)
+                    //遍历所有依赖进行解析
                     resolveDependencies(project, isOffline)
                 }
 
