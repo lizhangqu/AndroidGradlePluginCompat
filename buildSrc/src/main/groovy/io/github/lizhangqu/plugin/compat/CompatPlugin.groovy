@@ -181,11 +181,11 @@ class CompatPlugin implements Plugin<Project> {
              */
             StartParameter startParameter = project.gradle.startParameter
             boolean isOffline = startParameter.isOffline()
-            project.logger.error("[providedAar] gradle offline: ${isOffline}")
+            project.logger.lifecycle("[providedAar] gradle offline: ${isOffline}")
             if (isOffline) {
-                project.logger.error("[providedAar] use local cache dependency because offline is enabled")
+                project.logger.lifecycle("[providedAar] use local cache dependency because offline is enabled")
             } else {
-                project.logger.error("[providedAar] use remote dependency because offline is disabled")
+                project.logger.lifecycle("[providedAar] use remote dependency because offline is disabled")
             }
 
             /**
