@@ -287,37 +287,41 @@ class CompatPlugin implements Plugin<Project> {
                                             }
                                         }
                                     } else {
-                                        //在线模式，走远程依赖，实际逻辑gradle内部处理
-                                        boolean artifactExists = externalResourceArtifactResolver.artifactExists(moduleComponentArtifactMetadata, new DefaultResourceAwareResolveResult())
-                                        //如果该远程仓库存在该依赖
-                                        if (artifactExists) {
-                                            //获取该依赖对应的文件，提取jar，添加到provided的scope上
-                                            LocallyAvailableExternalResource locallyAvailableExternalResource = externalResourceArtifactResolver.resolveArtifact(moduleComponentArtifactMetadata, new DefaultResourceAwareResolveResult())
-                                            if (locallyAvailableExternalResource != null) {
-                                                File aarFile = null
-                                                try {
-                                                    def locallyAvailableResource = locallyAvailableExternalResource.getLocalResource()
-                                                    if (locallyAvailableResource != null) {
-                                                        aarFile = locallyAvailableResource.getFile()
-                                                    }
-                                                } catch (Exception e) {
-                                                    //高版本gradle兼容
+                                        try {
+                                            //在线模式，走远程依赖，实际逻辑gradle内部处理
+                                            boolean artifactExists = externalResourceArtifactResolver.artifactExists(moduleComponentArtifactMetadata, new DefaultResourceAwareResolveResult())
+                                            //如果该远程仓库存在该依赖
+                                            if (artifactExists) {
+                                                //获取该依赖对应的文件，提取jar，添加到provided的scope上
+                                                LocallyAvailableExternalResource locallyAvailableExternalResource = externalResourceArtifactResolver.resolveArtifact(moduleComponentArtifactMetadata, new DefaultResourceAwareResolveResult())
+                                                if (locallyAvailableExternalResource != null) {
+                                                    File aarFile = null
                                                     try {
-                                                        aarFile = locallyAvailableExternalResource.getFile()
-                                                    } catch (Exception e1) {
+                                                        def locallyAvailableResource = locallyAvailableExternalResource.getLocalResource()
+                                                        if (locallyAvailableResource != null) {
+                                                            aarFile = locallyAvailableResource.getFile()
+                                                        }
+                                                    } catch (Exception e) {
+                                                        //高版本gradle兼容
+                                                        try {
+                                                            aarFile = locallyAvailableExternalResource.getFile()
+                                                        } catch (Exception e1) {
 
+                                                        }
                                                     }
-                                                }
 
-                                                if (aarFile != null && aarFile.exists()) {
-                                                    FileCollection jarFromAar = project.zipTree(aarFile).filter {
-                                                        it.name == "classes.jar"
+                                                    if (aarFile != null && aarFile.exists()) {
+                                                        FileCollection jarFromAar = project.zipTree(aarFile).filter {
+                                                            it.name == "classes.jar"
+                                                        }
+                                                        project.getDependencies().add("provided", jarFromAar)
+                                                        project.logger.lifecycle("[providedAar] convert aar ${dependency.group}:${dependency.name}:${dependency.version} in ${repository.url} to jar and add provided file ${jarFromAar.getAsPath()} from ${aarFile}")
+                                                        return true
                                                     }
-                                                    project.getDependencies().add("provided", jarFromAar)
-                                                    project.logger.lifecycle("[providedAar] convert aar ${dependency.group}:${dependency.name}:${dependency.version} in ${repository.url} to jar and add provided file ${jarFromAar.getAsPath()} from ${aarFile}")
-                                                    return true
                                                 }
                                             }
+                                        } catch (Exception e) {
+                                            //可能会出现ssl之类的异常，无视掉
                                         }
                                     }
                                 }
