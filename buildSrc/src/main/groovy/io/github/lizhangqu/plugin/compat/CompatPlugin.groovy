@@ -435,11 +435,11 @@ class CompatPlugin implements Plugin<Project> {
                         if (!matchArtifact && offline) {
                             project.logger.lifecycle("[providedAar] can't resolve ${dependency.group}:${dependency.name}:${dependency.version} from local cache, you must disable offline model in gradle")
                         } else if (!matchArtifact && !offline) {
-                            project.logger.lifecycle("[providedAar] can't resolve ${dependency.group}:${dependency.name}:${dependency.version} from remote, is this dependency correct?")
+                            project.logger.lifecycle("[providedAar] can't resolve ${dependency.group}:${dependency.name}:${dependency.version} from remote, is this dependency correct or can you visit the maven url ?")
                             //重试本地缓存
                             boolean matchArtifactFromRetryLocalCache = resolveArtifactFromRepositories(project, dependency, offline, true)
                             if (matchArtifactFromRetryLocalCache) {
-                                project.logger.lifecycle("[providedAar] retry resolve ${dependency.group}:${dependency.name}:${dependency.version} from local cache success, you'd better disable offline model in gradle")
+                                project.logger.lifecycle("[providedAar] retry resolve ${dependency.group}:${dependency.name}:${dependency.version} from local cache success, you'd better disable offline model in gradle or check your network can visit the maven url")
                             }
                         }
                 }
