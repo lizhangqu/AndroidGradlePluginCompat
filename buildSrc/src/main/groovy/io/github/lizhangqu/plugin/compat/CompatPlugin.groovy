@@ -16,10 +16,12 @@ import org.gradle.api.internal.artifacts.repositories.DefaultMavenArtifactReposi
 import org.gradle.api.internal.artifacts.repositories.resolver.ExternalResourceArtifactResolver
 import org.gradle.api.internal.artifacts.repositories.resolver.ExternalResourceResolver
 import org.gradle.api.internal.artifacts.repositories.resolver.MavenResolver
+import org.gradle.api.internal.artifacts.repositories.resolver.MavenUniqueSnapshotComponentIdentifier
 import org.gradle.internal.component.external.model.DefaultModuleComponentArtifactIdentifier
 import org.gradle.internal.component.external.model.DefaultModuleComponentIdentifier
 import org.gradle.internal.component.external.model.ModuleComponentArtifactIdentifier
 import org.gradle.internal.resolve.result.DefaultResourceAwareResolveResult
+import org.gradle.internal.resolve.result.ResourceAwareResolveResult
 import org.gradle.internal.resource.local.LazyLocallyAvailableResourceCandidates
 import org.gradle.internal.resource.local.LocallyAvailableExternalResource
 import org.gradle.internal.resource.local.LocallyAvailableResourceCandidates
@@ -185,13 +187,13 @@ class CompatPlugin implements Plugin<Project> {
             } else {
                 project.logger.error("[providedAar] use remote dependency because offline is disabled")
             }
+
             /**
              * 创建ModuleComponentArtifactMetaData对象，之所以用反射，是因为gradle的不同版本，这个类的名字发生了变化，低版本可能是DefaultModuleComponentArtifactMetaData，而高版本改成了org.gradle.internal.component.external.model.DefaultModuleComponentArtifactMetadata
              */
-            def createModuleComponentArtifactMetaData = { String group, String name, String version, String type, String extension ->
+            def createModuleComponentArtifactMetaData = { MavenResolver mavenResolver, boolean offline, String group, String name, String version, String type, String extension ->
                 try {
                     ModuleComponentIdentifier componentIdentifier = DefaultModuleComponentIdentifier.newId(group, name, version)
-                    DefaultModuleComponentArtifactIdentifier moduleComponentArtifactIdentifier = new DefaultModuleComponentArtifactIdentifier(componentIdentifier, name, type, extension)
                     Class moduleComponentArtifactMetadataClass = null
                     try {
                         moduleComponentArtifactMetadataClass = Class.forName("org.gradle.internal.component.external.model.DefaultModuleComponentArtifactMetaData")
@@ -199,7 +201,6 @@ class CompatPlugin implements Plugin<Project> {
                         try {
                             moduleComponentArtifactMetadataClass = Class.forName("org.gradle.internal.component.external.model.DefaultModuleComponentArtifactMetadata")
                         } catch (ClassNotFoundException e1) {
-
                         }
                     }
                     if (moduleComponentArtifactMetadataClass == null) {
@@ -207,7 +208,26 @@ class CompatPlugin implements Plugin<Project> {
                     }
                     Constructor moduleComponentArtifactMetadataConstructor = moduleComponentArtifactMetadataClass.getDeclaredConstructor(ModuleComponentArtifactIdentifier.class)
                     moduleComponentArtifactMetadataConstructor.setAccessible(true)
-                    return moduleComponentArtifactMetadataConstructor.newInstance(moduleComponentArtifactIdentifier)
+
+                    Method findUniqueSnapshotVersionMethod = MavenResolver.class.getDeclaredMethod("findUniqueSnapshotVersion", ModuleComponentIdentifier.class, ResourceAwareResolveResult.class)
+                    findUniqueSnapshotVersionMethod.setAccessible(true)
+                    //离线模式不进行SNAPSHOT处理
+                    //在线模式并且版本号是以-SNAPSHOT结尾，进行处理
+                    if (!offline && version.toUpperCase().endsWith("-SNAPSHOT")) {
+                        def mavenUniqueSnapshotModuleSource = findUniqueSnapshotVersionMethod.invoke(mavenResolver, componentIdentifier, new DefaultResourceAwareResolveResult())
+                        if (mavenUniqueSnapshotModuleSource != null) {
+                            MavenUniqueSnapshotComponentIdentifier mavenUniqueSnapshotComponentIdentifier = new MavenUniqueSnapshotComponentIdentifier(componentIdentifier.getGroup(),
+                                    componentIdentifier.getModule(),
+                                    componentIdentifier.getVersion(),
+                                    mavenUniqueSnapshotModuleSource.getTimestamp())
+
+                            DefaultModuleComponentArtifactIdentifier moduleComponentArtifactIdentifier = new DefaultModuleComponentArtifactIdentifier(mavenUniqueSnapshotComponentIdentifier, name, type, extension)
+                            return moduleComponentArtifactMetadataConstructor.newInstance(moduleComponentArtifactIdentifier)
+                        }
+                    } else {
+                        DefaultModuleComponentArtifactIdentifier moduleComponentArtifactIdentifier = new DefaultModuleComponentArtifactIdentifier(componentIdentifier, name, type, extension)
+                        return moduleComponentArtifactMetadataConstructor.newInstance(moduleComponentArtifactIdentifier)
+                    }
                 } catch (Exception e) {
                     e.printStackTrace()
                 }
@@ -232,109 +252,113 @@ class CompatPlugin implements Plugin<Project> {
                     //此回调会多次进入，我们只需要解析一次，因此只要进入，就remove，然后执行我们的解析操作
                     project.gradle.removeListener(this)
                     //遍历providedAar的所有依赖
-                    providedAarConfiguration.getDependencies().each { def dependency ->
-                        def moduleComponentArtifactMetadata = createModuleComponentArtifactMetaData(dependency.group, dependency.name, dependency.version, "aar", "aar")
-                        //从repositories中去找，用any是因为只要找到一个就需要return
-                        boolean matchArtifact = project.getRepositories().any { def repository ->
-                            //只处理maven
-                            if (repository instanceof DefaultMavenArtifactRepository) {
-                                if (moduleComponentArtifactMetadata != null) {
-                                    MavenResolver mavenResolver = repository.createResolver()
-                                    ExternalResourceArtifactResolver externalResourceArtifactResolver = createArtifactResolver(mavenResolver)
-                                    LocallyAvailableResourceFinder locallyAvailableResourceFinder = externalResourceArtifactResolver.locallyAvailableResourceFinder
-                                    //离线模式，走本地缓存
-                                    if (isOffline) {
-                                        LocallyAvailableResourceCandidates locallyAvailableResourceCandidates = locallyAvailableResourceFinder.findCandidates(moduleComponentArtifactMetadata)
-                                        //如果本地的候选列表不为空
-                                        if (!locallyAvailableResourceCandidates.isNone()) {
-                                            Class compositeLocallyAvailableResourceCandidatesClass = Class.forName('org.gradle.internal.resource.local.CompositeLocallyAvailableResourceFinder$CompositeLocallyAvailableResourceCandidates')
-                                            if (compositeLocallyAvailableResourceCandidatesClass.isInstance(locallyAvailableResourceCandidates)) {
-                                                //获取这个组合的候选列表并遍历它，取其中一个，然后return
-                                                Field allCandidatesField = compositeLocallyAvailableResourceCandidatesClass.getDeclaredField("allCandidates")
-                                                allCandidatesField.setAccessible(true)
-                                                List<LocallyAvailableResourceCandidates> allCandidates = allCandidatesField.get(locallyAvailableResourceCandidates)
-                                                if (allCandidates != null) {
-                                                    FileCollection aarFiles = null
-                                                    //用any的原因是为了取一个就返回
-                                                    allCandidates.any { candidate ->
-                                                        //判断是否是LazyLocallyAvailableResourceCandidates实例
-                                                        if (candidate instanceof LazyLocallyAvailableResourceCandidates) {
-                                                            //如果该候选列表存在文件，则获取文件，然后过滤aar文件，返回
-                                                            if (!candidate.isNone()) {
-                                                                Method getFilesMethod = LazyLocallyAvailableResourceCandidates.class.getDeclaredMethod("getFiles")
-                                                                getFilesMethod.setAccessible(true)
-                                                                List<File> candidateFiles = getFilesMethod.invoke(candidate)
-                                                                aarFiles = project.files(candidateFiles).filter {
-                                                                    it.name.endsWith(".aar")
+                    providedAarConfiguration.getDependencies().each {
+                        def dependency ->
+                            //从repositories中去找，用any是因为只要找到一个就需要return
+                            boolean matchArtifact = project.getRepositories().any {
+                                def repository ->
+                                    //只处理maven
+                                    if (repository instanceof DefaultMavenArtifactRepository) {
+                                        MavenResolver mavenResolver = repository.createResolver()
+                                        def moduleComponentArtifactMetadata = createModuleComponentArtifactMetaData(mavenResolver, isOffline, dependency.group, dependency.name, dependency.version, "aar", "aar")
+                                        if (moduleComponentArtifactMetadata != null) {
+                                            ExternalResourceArtifactResolver externalResourceArtifactResolver = createArtifactResolver(mavenResolver)
+                                            LocallyAvailableResourceFinder locallyAvailableResourceFinder = externalResourceArtifactResolver.locallyAvailableResourceFinder
+                                            //离线模式，走本地缓存
+                                            if (isOffline) {
+                                                LocallyAvailableResourceCandidates locallyAvailableResourceCandidates = locallyAvailableResourceFinder.findCandidates(moduleComponentArtifactMetadata)
+                                                //如果本地的候选列表不为空
+                                                if (!locallyAvailableResourceCandidates.isNone()) {
+                                                    Class compositeLocallyAvailableResourceCandidatesClass = Class.forName('org.gradle.internal.resource.local.CompositeLocallyAvailableResourceFinder$CompositeLocallyAvailableResourceCandidates')
+                                                    if (compositeLocallyAvailableResourceCandidatesClass.isInstance(locallyAvailableResourceCandidates)) {
+                                                        //获取这个组合的候选列表并遍历它，取其中一个，然后return
+                                                        Field allCandidatesField = compositeLocallyAvailableResourceCandidatesClass.getDeclaredField("allCandidates")
+                                                        allCandidatesField.setAccessible(true)
+                                                        List<LocallyAvailableResourceCandidates> allCandidates = allCandidatesField.get(locallyAvailableResourceCandidates)
+                                                        if (allCandidates != null) {
+                                                            FileCollection aarFiles = null
+                                                            //用any的原因是为了取一个就返回
+                                                            allCandidates.any { candidate ->
+                                                                //判断是否是LazyLocallyAvailableResourceCandidates实例
+                                                                if (candidate instanceof LazyLocallyAvailableResourceCandidates) {
+                                                                    //如果该候选列表存在文件，则获取文件，然后过滤aar文件，返回
+                                                                    if (!candidate.isNone()) {
+                                                                        Method getFilesMethod = LazyLocallyAvailableResourceCandidates.class.getDeclaredMethod("getFiles")
+                                                                        getFilesMethod.setAccessible(true)
+                                                                        List<File> candidateFiles = getFilesMethod.invoke(candidate)
+                                                                        aarFiles = project.files(candidateFiles).filter {
+                                                                            it.name.endsWith(".aar")
+                                                                        }
+
+                                                                        if (!aarFiles.empty) {
+                                                                            return true
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                            //如果找到了aar文件，则提取jar，添加到provided的scope上
+                                                            if (!aarFiles.empty) {
+                                                                aarFiles.files.each { File aarFile ->
+                                                                    FileCollection jarFromAar = project.zipTree(aarFile).filter {
+                                                                        it.name == "classes.jar"
+                                                                    }
+                                                                    project.getDependencies().add("provided", jarFromAar)
+                                                                    project.logger.lifecycle("[providedAar] convert aar ${dependency.group}:${dependency.name}:${dependency.version} to jar and add provided file ${jarFromAar.getAsPath()} from ${aarFile}")
+                                                                }
+                                                                return true
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            } else {
+                                                //在线模式，走远程依赖，实际逻辑gradle内部处理
+                                                try {
+                                                    if (moduleComponentArtifactMetadata != null) {
+                                                        boolean artifactExists = externalResourceArtifactResolver.artifactExists(moduleComponentArtifactMetadata, new DefaultResourceAwareResolveResult())
+                                                        //如果该远程仓库存在该依赖
+                                                        if (artifactExists) {
+                                                            //获取该依赖对应的文件，提取jar，添加到provided的scope上
+                                                            LocallyAvailableExternalResource locallyAvailableExternalResource = externalResourceArtifactResolver.resolveArtifact(moduleComponentArtifactMetadata, new DefaultResourceAwareResolveResult())
+                                                            if (locallyAvailableExternalResource != null) {
+                                                                File aarFile = null
+                                                                try {
+                                                                    def locallyAvailableResource = locallyAvailableExternalResource.getLocalResource()
+                                                                    if (locallyAvailableResource != null) {
+                                                                        aarFile = locallyAvailableResource.getFile()
+                                                                    }
+                                                                } catch (Exception e) {
+                                                                    //高版本gradle兼容
+                                                                    try {
+                                                                        aarFile = locallyAvailableExternalResource.getFile()
+                                                                    } catch (Exception e1) {
+                                                                    }
                                                                 }
 
-                                                                if (!aarFiles.empty) {
+                                                                if (aarFile != null && aarFile.exists()) {
+                                                                    FileCollection jarFromAar = project.zipTree(aarFile).filter {
+                                                                        it.name == "classes.jar"
+                                                                    }
+                                                                    project.getDependencies().add("provided", jarFromAar)
+                                                                    project.logger.lifecycle("[providedAar] convert aar ${dependency.group}:${dependency.name}:${dependency.version} in ${repository.url} to jar and add provided file ${jarFromAar.getAsPath()} from ${aarFile}")
                                                                     return true
                                                                 }
                                                             }
                                                         }
                                                     }
-                                                    //如果找到了aar文件，则提取jar，添加到provided的scope上
-                                                    if (!aarFiles.empty) {
-                                                        aarFiles.files.each { File aarFile ->
-                                                            FileCollection jarFromAar = project.zipTree(aarFile).filter {
-                                                                it.name == "classes.jar"
-                                                            }
-                                                            project.getDependencies().add("provided", jarFromAar)
-                                                            project.logger.lifecycle("[providedAar] convert aar ${dependency.group}:${dependency.name}:${dependency.version} to jar and add provided file ${jarFromAar.getAsPath()} from ${aarFile}")
-                                                        }
-                                                        return true
-                                                    }
+                                                } catch (Exception e) {
+                                                    //可能会出现ssl之类的异常，无视掉
                                                 }
                                             }
-                                        }
-                                    } else {
-                                        try {
-                                            //在线模式，走远程依赖，实际逻辑gradle内部处理
-                                            boolean artifactExists = externalResourceArtifactResolver.artifactExists(moduleComponentArtifactMetadata, new DefaultResourceAwareResolveResult())
-                                            //如果该远程仓库存在该依赖
-                                            if (artifactExists) {
-                                                //获取该依赖对应的文件，提取jar，添加到provided的scope上
-                                                LocallyAvailableExternalResource locallyAvailableExternalResource = externalResourceArtifactResolver.resolveArtifact(moduleComponentArtifactMetadata, new DefaultResourceAwareResolveResult())
-                                                if (locallyAvailableExternalResource != null) {
-                                                    File aarFile = null
-                                                    try {
-                                                        def locallyAvailableResource = locallyAvailableExternalResource.getLocalResource()
-                                                        if (locallyAvailableResource != null) {
-                                                            aarFile = locallyAvailableResource.getFile()
-                                                        }
-                                                    } catch (Exception e) {
-                                                        //高版本gradle兼容
-                                                        try {
-                                                            aarFile = locallyAvailableExternalResource.getFile()
-                                                        } catch (Exception e1) {
-
-                                                        }
-                                                    }
-
-                                                    if (aarFile != null && aarFile.exists()) {
-                                                        FileCollection jarFromAar = project.zipTree(aarFile).filter {
-                                                            it.name == "classes.jar"
-                                                        }
-                                                        project.getDependencies().add("provided", jarFromAar)
-                                                        project.logger.lifecycle("[providedAar] convert aar ${dependency.group}:${dependency.name}:${dependency.version} in ${repository.url} to jar and add provided file ${jarFromAar.getAsPath()} from ${aarFile}")
-                                                        return true
-                                                    }
-                                                }
-                                            }
-                                        } catch (Exception e) {
-                                            //可能会出现ssl之类的异常，无视掉
                                         }
                                     }
-                                }
                             }
-                        }
 
-                        if (!matchArtifact && isOffline) {
-                            project.logger.lifecycle("[providedAar] can't resolve ${dependency.group}:${dependency.name}:${dependency.version} from local cache, you must disable offline model in gradle")
-                        } else if (!matchArtifact && !isOffline) {
-                            project.logger.lifecycle("[providedAar] can't resolve ${dependency.group}:${dependency.name}:${dependency.version} from remote, is this dependency correct?")
-                        }
+                            if (!matchArtifact && isOffline) {
+                                project.logger.lifecycle("[providedAar] can't resolve ${dependency.group}:${dependency.name}:${dependency.version} from local cache, you must disable offline model in gradle")
+                            } else if (!matchArtifact && !isOffline) {
+                                project.logger.lifecycle("[providedAar] can't resolve ${dependency.group}:${dependency.name}:${dependency.version} from remote, is this dependency correct?")
+                            }
+
                     }
                 }
 
