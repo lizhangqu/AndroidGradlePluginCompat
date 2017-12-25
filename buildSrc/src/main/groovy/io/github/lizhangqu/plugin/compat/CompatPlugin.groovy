@@ -235,7 +235,7 @@ class CompatPlugin implements Plugin<Project> {
                     providedAarConfiguration.getDependencies().each { def dependency ->
                         def moduleComponentArtifactMetadata = createModuleComponentArtifactMetaData(dependency.group, dependency.name, dependency.version, "aar", "aar")
                         //从repositories中去找，用any是因为只要找到一个就需要return
-                        project.getRepositories().any { def repository ->
+                        boolean matchArtifact = project.getRepositories().any { def repository ->
                             //只处理maven
                             if (repository instanceof DefaultMavenArtifactRepository) {
                                 if (moduleComponentArtifactMetadata != null) {
@@ -328,6 +328,10 @@ class CompatPlugin implements Plugin<Project> {
                                     }
                                 }
                             }
+                        }
+
+                        if (!matchArtifact && isOffline) {
+                            project.logger.lifecycle("[providedAar] can't resolve ${dependency.group}:${dependency.name}:${dependency.version} from local cache")
                         }
                     }
                 }
