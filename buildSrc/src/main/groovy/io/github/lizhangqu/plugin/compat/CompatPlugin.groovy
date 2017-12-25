@@ -22,7 +22,6 @@ import org.gradle.internal.component.external.model.ModuleComponentArtifactIdent
 import org.gradle.internal.resolve.result.DefaultResourceAwareResolveResult
 import org.gradle.internal.resource.local.LazyLocallyAvailableResourceCandidates
 import org.gradle.internal.resource.local.LocallyAvailableExternalResource
-import org.gradle.internal.resource.local.LocallyAvailableResource
 import org.gradle.internal.resource.local.LocallyAvailableResourceCandidates
 import org.gradle.internal.resource.local.LocallyAvailableResourceFinder
 
@@ -153,6 +152,9 @@ class CompatPlugin implements Plugin<Project> {
         return result
     }
 
+    /**
+     * 在application 插件中开启providedAar功能
+     */
     void providedAarCompat() {
         if (!project.getPlugins().hasPlugin("com.android.application")) {
             return
