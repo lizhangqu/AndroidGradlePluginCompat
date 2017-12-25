@@ -22,6 +22,8 @@ dependencies {
  - android gradle plugin 2.3.0+
  - android gradle plugin 3.0.0+
  - android gradle plugin 3.1.0+
+ 
+小于2.2.0的版本也是支持，但是不支持传递依赖
 
 ### aapt2是否开启
 
