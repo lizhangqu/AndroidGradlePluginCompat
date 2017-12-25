@@ -276,45 +276,49 @@ class CompatPlugin implements Plugin<Project> {
                 LocallyAvailableResourceCandidates locallyAvailableResourceCandidates = locallyAvailableResourceFinder.findCandidates(moduleComponentArtifactMetadata)
                 //如果本地的候选列表不为空
                 if (!locallyAvailableResourceCandidates.isNone()) {
-                    Class compositeLocallyAvailableResourceCandidatesClass = Class.forName('org.gradle.internal.resource.local.CompositeLocallyAvailableResourceFinder$CompositeLocallyAvailableResourceCandidates')
-                    if (compositeLocallyAvailableResourceCandidatesClass.isInstance(locallyAvailableResourceCandidates)) {
-                        //获取这个组合的候选列表并遍历它，取其中一个，然后return
-                        Field allCandidatesField = compositeLocallyAvailableResourceCandidatesClass.getDeclaredField("allCandidates")
-                        allCandidatesField.setAccessible(true)
-                        List<LocallyAvailableResourceCandidates> allCandidates = allCandidatesField.get(locallyAvailableResourceCandidates)
-                        if (allCandidates != null) {
-                            FileCollection aarFiles = null
-                            //用any的原因是为了取一个就返回
-                            allCandidates.any { candidate ->
-                                //判断是否是LazyLocallyAvailableResourceCandidates实例
-                                if (candidate instanceof LazyLocallyAvailableResourceCandidates) {
-                                    //如果该候选列表存在文件，则获取文件，然后过滤aar文件，返回
-                                    if (!candidate.isNone()) {
-                                        Method getFilesMethod = LazyLocallyAvailableResourceCandidates.class.getDeclaredMethod("getFiles")
-                                        getFilesMethod.setAccessible(true)
-                                        List<File> candidateFiles = getFilesMethod.invoke(candidate)
-                                        aarFiles = project.files(candidateFiles).filter {
-                                            it.name.endsWith(".aar")
-                                        }
+                    try {
+                        Class compositeLocallyAvailableResourceCandidatesClass = Class.forName('org.gradle.internal.resource.local.CompositeLocallyAvailableResourceFinder$CompositeLocallyAvailableResourceCandidates')
+                        if (compositeLocallyAvailableResourceCandidatesClass.isInstance(locallyAvailableResourceCandidates)) {
+                            //获取这个组合的候选列表并遍历它，取其中一个，然后return
+                            Field allCandidatesField = compositeLocallyAvailableResourceCandidatesClass.getDeclaredField("allCandidates")
+                            allCandidatesField.setAccessible(true)
+                            List<LocallyAvailableResourceCandidates> allCandidates = allCandidatesField.get(locallyAvailableResourceCandidates)
+                            if (allCandidates != null) {
+                                FileCollection aarFiles = null
+                                //用any的原因是为了取一个就返回
+                                allCandidates.any { candidate ->
+                                    //判断是否是LazyLocallyAvailableResourceCandidates实例
+                                    if (candidate instanceof LazyLocallyAvailableResourceCandidates) {
+                                        //如果该候选列表存在文件，则获取文件，然后过滤aar文件，返回
+                                        if (!candidate.isNone()) {
+                                            Method getFilesMethod = LazyLocallyAvailableResourceCandidates.class.getDeclaredMethod("getFiles")
+                                            getFilesMethod.setAccessible(true)
+                                            List<File> candidateFiles = getFilesMethod.invoke(candidate)
+                                            aarFiles = project.files(candidateFiles).filter {
+                                                it.name.endsWith(".aar")
+                                            }
 
-                                        if (!aarFiles.empty) {
-                                            return true
+                                            if (!aarFiles.empty) {
+                                                return true
+                                            }
                                         }
                                     }
                                 }
-                            }
-                            //如果找到了aar文件，则提取jar，添加到provided的scope上
-                            if (!aarFiles.empty) {
-                                aarFiles.files.each { File aarFile ->
-                                    FileCollection jarFromAar = project.zipTree(aarFile).filter {
-                                        it.name == "classes.jar"
+                                //如果找到了aar文件，则提取jar，添加到provided的scope上
+                                if (!aarFiles.empty) {
+                                    aarFiles.files.each { File aarFile ->
+                                        FileCollection jarFromAar = project.zipTree(aarFile).filter {
+                                            it.name == "classes.jar"
+                                        }
+                                        project.getDependencies().add("provided", jarFromAar)
+                                        project.logger.lifecycle("[providedAar] convert aar ${dependency.group}:${dependency.name}:${dependency.version} to jar and add provided file ${jarFromAar.getAsPath()} from ${aarFile}")
                                     }
-                                    project.getDependencies().add("provided", jarFromAar)
-                                    project.logger.lifecycle("[providedAar] convert aar ${dependency.group}:${dependency.name}:${dependency.version} to jar and add provided file ${jarFromAar.getAsPath()} from ${aarFile}")
+                                    return true
                                 }
-                                return true
                             }
                         }
+                    } catch (Exception e) {
+
                     }
                 }
                 return false
@@ -327,8 +331,8 @@ class CompatPlugin implements Plugin<Project> {
                                     ExternalResourceArtifactResolver externalResourceArtifactResolver,
                                     def moduleComponentArtifactMetadata,
                                     def dependency ->
-                try {
-                    if (moduleComponentArtifactMetadata != null) {
+                if (moduleComponentArtifactMetadata != null) {
+                    try {
                         boolean artifactExists = externalResourceArtifactResolver.artifactExists(moduleComponentArtifactMetadata, new DefaultResourceAwareResolveResult())
                         //如果该远程仓库存在该依赖
                         if (artifactExists) {
@@ -359,9 +363,9 @@ class CompatPlugin implements Plugin<Project> {
                                 }
                             }
                         }
+                    } catch (Exception e) {
+                        //可能会出现ssl之类的异常，无视掉
                     }
-                } catch (Exception e) {
-                    //可能会出现ssl之类的异常，无视掉
                 }
                 return false
             }
