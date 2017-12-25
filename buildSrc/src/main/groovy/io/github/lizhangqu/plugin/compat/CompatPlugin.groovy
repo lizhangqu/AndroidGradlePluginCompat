@@ -337,7 +337,7 @@ class CompatPlugin implements Plugin<Project> {
                     //支持2.2.0+
                     def prepareDependenciesTask = project.tasks.findByName("prepare${variant.getName().capitalize()}Dependencies")
                     if (prepareDependenciesTask) {
-                        prepareDependenciesTask.configure {
+                        prepareDependenciesTask.doFirst {
                             try {
                                 Class prepareDependenciesTaskClass = Class.forName("com.android.build.gradle.internal.tasks.PrepareDependenciesTask")
                                 Field checkersField = prepareDependenciesTaskClass.getDeclaredField('checkers')
