@@ -1,5 +1,6 @@
 package io.github.lizhangqu.plugin.compat
 
+import com.android.build.gradle.internal.publishing.AndroidArtifacts
 import org.gradle.StartParameter
 import org.gradle.api.Plugin
 import org.gradle.api.Project
@@ -169,6 +170,7 @@ class CompatPlugin implements Plugin<Project> {
             providedConfiguration.extendsFrom(providedAarConfiguration)
         }
         if (androidGradlePluginVersion.startsWith("1.") || androidGradlePluginVersion.startsWith("2.0") || androidGradlePluginVersion.startsWith("2.1")) {
+            //支持1.0.0+ ~ 2.1.0+，且低于2.2.0，不支持传递依赖
             /**
              * 获取是否是离线模式
              */
@@ -276,7 +278,7 @@ class CompatPlugin implements Plugin<Project> {
                                                                 it.name == "classes.jar"
                                                             }
                                                             project.getDependencies().add("provided", jarFromAar)
-                                                            project.logger.error("[providedAar] convert aar ${dependency.group}:${dependency.name}:${dependency.version} to jar and add provided file ${jarFromAar.getAsPath()} from ${aarFile}")
+                                                            project.logger.lifecycle("[providedAar] convert aar ${dependency.group}:${dependency.name}:${dependency.version} to jar and add provided file ${jarFromAar.getAsPath()} from ${aarFile}")
                                                         }
                                                         return true
                                                     }
@@ -311,7 +313,7 @@ class CompatPlugin implements Plugin<Project> {
                                                         it.name == "classes.jar"
                                                     }
                                                     project.getDependencies().add("provided", jarFromAar)
-                                                    project.logger.error("[providedAar] convert aar ${dependency.group}:${dependency.name}:${dependency.version} in ${repository.url} to jar and add provided file ${jarFromAar.getAsPath()} from ${aarFile}")
+                                                    project.logger.lifecycle("[providedAar] convert aar ${dependency.group}:${dependency.name}:${dependency.version} in ${repository.url} to jar and add provided file ${jarFromAar.getAsPath()} from ${aarFile}")
                                                     return true
                                                 }
                                             }
@@ -332,12 +334,12 @@ class CompatPlugin implements Plugin<Project> {
             def android = project.getExtensions().getByName("android")
             android.applicationVariants.all { def variant ->
                 if (androidGradlePluginVersion.startsWith("1.") || androidGradlePluginVersion.startsWith("2.0") || androidGradlePluginVersion.startsWith("2.1")) {
-                    //不在这里处理
-                } else if (androidGradlePluginVersion.startsWith("2.2") || androidGradlePluginVersion.startsWith("2.3") || androidGradlePluginVersion.startsWith("2.4") || androidGradlePluginVersion.startsWith("2.5")) {
-                    //支持2.2.0+
+                    //不在这里处理，上面已经处理掉了
+                } else if (androidGradlePluginVersion.startsWith("2.2") || androidGradlePluginVersion.startsWith("2.3") || androidGradlePluginVersion.startsWith("2.4")) {
+                    //支持2.2.0+ ~ 2.4.0+，且低于2.5.0，支持传递依赖
                     def prepareDependenciesTask = project.tasks.findByName("prepare${variant.getName().capitalize()}Dependencies")
                     if (prepareDependenciesTask) {
-                        prepareDependenciesTask.doFirst {
+                        def removeSyncIssues = {
                             try {
                                 Class prepareDependenciesTaskClass = Class.forName("com.android.build.gradle.internal.tasks.PrepareDependenciesTask")
                                 Field checkersField = prepareDependenciesTaskClass.getDeclaredField('checkers')
@@ -349,7 +351,7 @@ class CompatPlugin implements Plugin<Project> {
                                         syncIssues.iterator().with { syncIssuesIterator ->
                                             syncIssuesIterator.each { syncIssue ->
                                                 if (syncIssue.getType() == 7 && syncIssue.getSeverity() == 2) {
-                                                    project.logger.error "[providedAar] WARNING: providedAar has been enabled in com.android.application you can ignore ${syncIssue}"
+                                                    project.logger.lifecycle "[providedAar] WARNING: providedAar has been enabled in com.android.application you can ignore ${syncIssue}"
                                                     syncIssuesIterator.remove()
                                                 }
                                             }
@@ -360,9 +362,14 @@ class CompatPlugin implements Plugin<Project> {
                                 e.printStackTrace()
                             }
                         }
+                        if (androidGradlePluginVersion.startsWith("2.2") || androidGradlePluginVersion.startsWith("2.3")) {
+                            prepareDependenciesTask.configure removeSyncIssues
+                        } else if (androidGradlePluginVersion.startsWith("2.4")) {
+                            prepareDependenciesTask.doFirst removeSyncIssues
+                        }
                     }
-                } else if (androidGradlePluginVersion.startsWith("3.")) {
-                    //支持3.0.0+
+                } else if (androidGradlePluginVersion.startsWith("2.5") || androidGradlePluginVersion.startsWith("3.")) {
+                    //支持2.5.0+ ~ 3.1.0+，支持传递依赖
                     def prepareBuildTask = project.tasks.findByName("pre${variant.getName().capitalize()}Build")
                     if (prepareBuildTask) {
                         boolean needRedirectAction = false
@@ -376,14 +383,29 @@ class CompatPlugin implements Plugin<Project> {
                         }
                         if (needRedirectAction) {
                             prepareBuildTask.doLast {
+                                def compileManifests = null
+                                def runtimeManifests = null
+                                Class appPreBuildTaskClass = Class.forName("com.android.build.gradle.internal.tasks.AppPreBuildTask")
                                 try {
-                                    Class appPreBuildTaskClass = Class.forName("com.android.build.gradle.internal.tasks.AppPreBuildTask")
+                                    //3.0.0+
                                     Field compileManifestsField = appPreBuildTaskClass.getDeclaredField("compileManifests")
                                     Field runtimeManifestsField = appPreBuildTaskClass.getDeclaredField("runtimeManifests")
                                     compileManifestsField.setAccessible(true)
                                     runtimeManifestsField.setAccessible(true)
-                                    def compileManifests = compileManifestsField.get(prepareBuildTask)
-                                    def runtimeManifests = runtimeManifestsField.get(prepareBuildTask)
+                                    compileManifests = compileManifestsField.get(prepareBuildTask)
+                                    runtimeManifests = runtimeManifestsField.get(prepareBuildTask)
+                                } catch (Exception e) {
+                                    try {
+                                        //2.5.0+
+                                        Field variantScopeField = appPreBuildTaskClass.getDeclaredField("variantScope")
+                                        variantScopeField.setAccessible(true)
+                                        def variantScope = variantScopeField.get(prepareBuildTask)
+                                        compileManifests = variantScope.getArtifactCollection(AndroidArtifacts.ConsumedConfigType.COMPILE_CLASSPATH, AndroidArtifacts.ArtifactScope.ALL, AndroidArtifacts.ArtifactType.MANIFEST)
+                                        runtimeManifests = variantScope.getArtifactCollection(AndroidArtifacts.ConsumedConfigType.RUNTIME_CLASSPATH, AndroidArtifacts.ArtifactScope.ALL, AndroidArtifacts.ArtifactType.MANIFEST)
+                                    } catch (Exception e1) {
+                                    }
+                                }
+                                try {
                                     Set<ResolvedArtifactResult> compileArtifacts = compileManifests.getArtifacts()
                                     Set<ResolvedArtifactResult> runtimeArtifacts = runtimeManifests.getArtifacts()
 
@@ -419,7 +441,7 @@ class CompatPlugin implements Plugin<Project> {
                                             String runtimeVersion = runtimeIds.get(key)
                                             if (runtimeVersion == null) {
                                                 String display = compileId.getDisplayName()
-                                                project.logger.error(
+                                                project.logger.lifecycle(
                                                         "[providedAar] WARNING: providedAar has been enabled in com.android.application you can ignore 'Android dependency '"
                                                                 + display
                                                                 + "' is set to compileOnly/provided which is not supported'")
@@ -446,4 +468,5 @@ class CompatPlugin implements Plugin<Project> {
         }
 
     }
+
 }
