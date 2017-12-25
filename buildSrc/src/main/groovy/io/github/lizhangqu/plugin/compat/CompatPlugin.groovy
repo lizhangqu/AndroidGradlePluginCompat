@@ -330,6 +330,7 @@ class CompatPlugin implements Plugin<Project> {
             def fetchFromRemote = { Project project,
                                     ExternalResourceArtifactResolver externalResourceArtifactResolver,
                                     def moduleComponentArtifactMetadata,
+                                    def repository,
                                     def dependency ->
                 if (moduleComponentArtifactMetadata != null) {
                     try {
@@ -364,6 +365,7 @@ class CompatPlugin implements Plugin<Project> {
                             }
                         }
                     } catch (Exception e) {
+                        e.printStackTrace()
                         //可能会出现ssl之类的异常，无视掉
                     }
                 }
@@ -394,7 +396,7 @@ class CompatPlugin implements Plugin<Project> {
                             }
                         } else {
                             //在线模式，走远程依赖，实际逻辑gradle内部处理
-                            boolean fetchFromRemoteResult = fetchFromRemote(project, externalResourceArtifactResolver, moduleComponentArtifactMetadata, dependency)
+                            boolean fetchFromRemoteResult = fetchFromRemote(project, externalResourceArtifactResolver, moduleComponentArtifactMetadata, repository, dependency)
                             if (fetchFromRemoteResult) {
                                 return true
                             }
