@@ -165,8 +165,8 @@ class CompatPlugin implements Plugin<Project> {
         }
         Configuration providedAarConfiguration = project.getConfigurations().create("providedAar")
         String androidGradlePluginVersion = getAndroidGradlePluginVersionCompat()
-        if (androidGradlePluginVersion.startsWith("2.2") || androidGradlePluginVersion.startsWith("2.3") || androidGradlePluginVersion.startsWith("3.")) {
-
+        if (androidGradlePluginVersion.startsWith("2.2") || androidGradlePluginVersion.startsWith("2.3") || androidGradlePluginVersion.startsWith("2.4") || androidGradlePluginVersion.startsWith("2.5") || androidGradlePluginVersion.startsWith("3.")) {
+            providedConfiguration.extendsFrom(providedAarConfiguration)
         }
         if (androidGradlePluginVersion.startsWith("1.") || androidGradlePluginVersion.startsWith("2.0") || androidGradlePluginVersion.startsWith("2.1")) {
             /**
@@ -191,9 +191,9 @@ class CompatPlugin implements Plugin<Project> {
                     try {
                         moduleComponentArtifactMetadataClass = Class.forName("org.gradle.internal.component.external.model.DefaultModuleComponentArtifactMetaData")
                     } catch (ClassNotFoundException e) {
-                        try{
+                        try {
                             moduleComponentArtifactMetadataClass = Class.forName("org.gradle.internal.component.external.model.DefaultModuleComponentArtifactMetadata")
-                        }catch (ClassNotFoundException e1){
+                        } catch (ClassNotFoundException e1) {
 
                         }
                     }
@@ -333,8 +333,8 @@ class CompatPlugin implements Plugin<Project> {
             android.applicationVariants.all { def variant ->
                 if (androidGradlePluginVersion.startsWith("1.") || androidGradlePluginVersion.startsWith("2.0") || androidGradlePluginVersion.startsWith("2.1")) {
                     //不在这里处理
-                } else if (androidGradlePluginVersion.startsWith("2.2") || androidGradlePluginVersion.startsWith("2.3")) {
-                    //支持2.2.3和2.3.3
+                } else if (androidGradlePluginVersion.startsWith("2.2") || androidGradlePluginVersion.startsWith("2.3") || androidGradlePluginVersion.startsWith("2.4") || androidGradlePluginVersion.startsWith("2.5")) {
+                    //支持2.2.0+
                     def prepareDependenciesTask = project.tasks.findByName("prepare${variant.getName().capitalize()}Dependencies")
                     if (prepareDependenciesTask) {
                         prepareDependenciesTask.configure {
@@ -349,7 +349,7 @@ class CompatPlugin implements Plugin<Project> {
                                         syncIssues.iterator().with { syncIssuesIterator ->
                                             syncIssuesIterator.each { syncIssue ->
                                                 if (syncIssue.getType() == 7 && syncIssue.getSeverity() == 2) {
-                                                    project.logger.lifecycle "WARNING: providedAar has been enabled in com.android.application you can ignore ${syncIssue}"
+                                                    project.logger.error "[providedAar] WARNING: providedAar has been enabled in com.android.application you can ignore ${syncIssue}"
                                                     syncIssuesIterator.remove()
                                                 }
                                             }
@@ -362,7 +362,7 @@ class CompatPlugin implements Plugin<Project> {
                         }
                     }
                 } else if (androidGradlePluginVersion.startsWith("3.")) {
-                    //支持3.*
+                    //支持3.0.0+
                     def prepareBuildTask = project.tasks.findByName("pre${variant.getName().capitalize()}Build")
                     if (prepareBuildTask) {
                         boolean needRedirectAction = false
@@ -419,8 +419,8 @@ class CompatPlugin implements Plugin<Project> {
                                             String runtimeVersion = runtimeIds.get(key)
                                             if (runtimeVersion == null) {
                                                 String display = compileId.getDisplayName()
-                                                project.logger.lifecycle(
-                                                        "WARNING: providedAar has been enabled in com.android.application you can ignore 'Android dependency '"
+                                                project.logger.error(
+                                                        "[providedAar] WARNING: providedAar has been enabled in com.android.application you can ignore 'Android dependency '"
                                                                 + display
                                                                 + "' is set to compileOnly/provided which is not supported'")
                                             } else if (!runtimeVersion.isEmpty()) {
