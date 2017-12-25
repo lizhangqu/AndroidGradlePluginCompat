@@ -209,11 +209,11 @@ class CompatPlugin implements Plugin<Project> {
                     Constructor moduleComponentArtifactMetadataConstructor = moduleComponentArtifactMetadataClass.getDeclaredConstructor(ModuleComponentArtifactIdentifier.class)
                     moduleComponentArtifactMetadataConstructor.setAccessible(true)
 
-                    Method findUniqueSnapshotVersionMethod = MavenResolver.class.getDeclaredMethod("findUniqueSnapshotVersion", ModuleComponentIdentifier.class, ResourceAwareResolveResult.class)
-                    findUniqueSnapshotVersionMethod.setAccessible(true)
-                    //离线模式不进行SNAPSHOT处理
-                    //在线模式并且版本号是以-SNAPSHOT结尾，进行处理
+                    //离线模式不需要进行SNAPSHOT处理，gradle能够查找到SNAPSHOT本地缓存
+                    //在线模式并且版本号是以-SNAPSHOT结尾，进行处理，如果不处理，gradle无法定位当前最新快照版本
                     if (!offline && version.toUpperCase().endsWith("-SNAPSHOT")) {
+                        Method findUniqueSnapshotVersionMethod = MavenResolver.class.getDeclaredMethod("findUniqueSnapshotVersion", ModuleComponentIdentifier.class, ResourceAwareResolveResult.class)
+                        findUniqueSnapshotVersionMethod.setAccessible(true)
                         def mavenUniqueSnapshotModuleSource = findUniqueSnapshotVersionMethod.invoke(mavenResolver, componentIdentifier, new DefaultResourceAwareResolveResult())
                         if (mavenUniqueSnapshotModuleSource != null) {
                             MavenUniqueSnapshotComponentIdentifier mavenUniqueSnapshotComponentIdentifier = new MavenUniqueSnapshotComponentIdentifier(componentIdentifier.getGroup(),
