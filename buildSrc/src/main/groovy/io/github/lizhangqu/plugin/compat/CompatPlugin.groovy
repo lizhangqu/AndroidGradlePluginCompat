@@ -1,6 +1,5 @@
 package io.github.lizhangqu.plugin.compat
 
-import com.android.build.gradle.internal.publishing.AndroidArtifacts
 import org.gradle.StartParameter
 import org.gradle.api.Plugin
 import org.gradle.api.Project
@@ -157,6 +156,7 @@ class CompatPlugin implements Plugin<Project> {
     /**
      * 在application 插件中开启providedAar功能
      */
+    @SuppressWarnings("UnnecessaryQualifiedReference")
     void providedAarCompat() {
         if (!project.getPlugins().hasPlugin("com.android.application")) {
             return
@@ -437,8 +437,9 @@ class CompatPlugin implements Plugin<Project> {
                                         Field variantScopeField = appPreBuildTaskClass.getDeclaredField("variantScope")
                                         variantScopeField.setAccessible(true)
                                         def variantScope = variantScopeField.get(prepareBuildTask)
-                                        compileManifests = variantScope.getArtifactCollection(AndroidArtifacts.ConsumedConfigType.COMPILE_CLASSPATH, AndroidArtifacts.ArtifactScope.ALL, AndroidArtifacts.ArtifactType.MANIFEST)
-                                        runtimeManifests = variantScope.getArtifactCollection(AndroidArtifacts.ConsumedConfigType.RUNTIME_CLASSPATH, AndroidArtifacts.ArtifactScope.ALL, AndroidArtifacts.ArtifactType.MANIFEST)
+                                        //noinspection UnnecessaryQualifiedReference
+                                        compileManifests = variantScope.getArtifactCollection(com.android.build.gradle.internal.publishing.AndroidArtifacts.ConsumedConfigType.COMPILE_CLASSPATH, com.android.build.gradle.internal.publishing.AndroidArtifacts.ArtifactScope.ALL, com.android.build.gradle.internal.publishing.AndroidArtifacts.ArtifactType.MANIFEST)
+                                        runtimeManifests = variantScope.getArtifactCollection(com.android.build.gradle.internal.publishing.AndroidArtifacts.ConsumedConfigType.RUNTIME_CLASSPATH, com.android.build.gradle.internal.publishing.AndroidArtifacts.ArtifactScope.ALL, com.android.build.gradle.internal.publishing.AndroidArtifacts.ArtifactType.MANIFEST)
                                     } catch (Exception e1) {
                                     }
                                 }
