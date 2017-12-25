@@ -167,6 +167,7 @@ class CompatPlugin implements Plugin<Project> {
         Configuration providedAarConfiguration = project.getConfigurations().create("providedAar")
         String androidGradlePluginVersion = getAndroidGradlePluginVersionCompat()
         if (androidGradlePluginVersion.startsWith("2.2") || androidGradlePluginVersion.startsWith("2.3") || androidGradlePluginVersion.startsWith("2.4") || androidGradlePluginVersion.startsWith("2.5") || androidGradlePluginVersion.startsWith("3.")) {
+            //大于2.2.0的版本让provided继承providedAar，低于2.2.0的版本，手动提取aar中的jar添加依赖
             providedConfiguration.extendsFrom(providedAarConfiguration)
         }
         if (androidGradlePluginVersion.startsWith("1.") || androidGradlePluginVersion.startsWith("2.0") || androidGradlePluginVersion.startsWith("2.1")) {
