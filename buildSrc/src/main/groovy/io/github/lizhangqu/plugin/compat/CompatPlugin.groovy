@@ -331,7 +331,9 @@ class CompatPlugin implements Plugin<Project> {
                         }
 
                         if (!matchArtifact && isOffline) {
-                            project.logger.lifecycle("[providedAar] can't resolve ${dependency.group}:${dependency.name}:${dependency.version} from local cache")
+                            project.logger.lifecycle("[providedAar] can't resolve ${dependency.group}:${dependency.name}:${dependency.version} from local cache, you must disable offline model in gradle")
+                        } else if (!matchArtifact && !isOffline) {
+                            project.logger.lifecycle("[providedAar] can't resolve ${dependency.group}:${dependency.name}:${dependency.version} from remote, is this dependency correct?")
                         }
                     }
                 }
