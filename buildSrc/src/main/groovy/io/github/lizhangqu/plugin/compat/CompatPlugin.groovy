@@ -166,14 +166,19 @@ class CompatPlugin implements Plugin<Project> {
             return
         }
         Configuration providedConfiguration = project.getConfigurations().findByName("provided")
-        if (providedConfiguration == null) {
+        Configuration compileOnlyConfiguration = project.getConfigurations().findByName("compileOnly")
+        if (providedConfiguration == null && compileOnlyConfiguration == null) {
             return
         }
         Configuration providedAarConfiguration = project.getConfigurations().create("providedAar")
         String androidGradlePluginVersion = getAndroidGradlePluginVersionCompat()
         if (androidGradlePluginVersion.startsWith("2.2") || androidGradlePluginVersion.startsWith("2.3") || androidGradlePluginVersion.startsWith("2.4") || androidGradlePluginVersion.startsWith("2.5") || androidGradlePluginVersion.startsWith("3.")) {
             //大于2.2.0的版本让provided继承providedAar，低于2.2.0的版本，手动提取aar中的jar添加依赖
-            providedConfiguration.extendsFrom(providedAarConfiguration)
+            if (compileOnlyConfiguration != null) {
+                compileOnlyConfiguration.extendsFrom(providedAarConfiguration)
+            } else {
+                providedConfiguration.extendsFrom(providedAarConfiguration)
+            }
         }
         if (androidGradlePluginVersion.startsWith("1.") || androidGradlePluginVersion.startsWith("2.0") || androidGradlePluginVersion.startsWith("2.1")) {
             //支持1.0.0+ ~ 2.1.0+，且低于2.2.0，不支持传递依赖
