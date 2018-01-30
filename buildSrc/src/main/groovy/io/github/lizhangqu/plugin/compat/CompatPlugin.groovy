@@ -91,6 +91,21 @@ class CompatPlugin implements Plugin<Project> {
     }
 
     /**
+     * 导出aapt2 jni 和 aapt2 daemon mode 是否被废弃
+     */
+    @SuppressWarnings("GrMethodMayBeStatic")
+    boolean isAapt2JniAndAapt2DaemonModeDeprecated() {
+        try {
+            def aapt2JniEnumValue = resolveEnumValue("ENABLE_IN_PROCESS_AAPT2", Class.forName("com.android.build.gradle.options.DeprecatedOptions"))
+            def aapt2DaemonModeEnumValue = resolveEnumValue("ENABLE_DAEMON_MODE_AAPT2", Class.forName("com.android.build.gradle.options.DeprecatedOptions"))
+            return aapt2JniEnumValue != null && aapt2DaemonModeEnumValue != null
+        } catch (Exception e) {
+
+        }
+        return false
+    }
+
+    /**
      * 导出aapt2Jni是否开启的兼容方法，build.gradle中apply后可直接使用isAapt2JniEnabledCompat()
      */
     boolean isAapt2JniEnabledCompat() {
@@ -100,6 +115,9 @@ class CompatPlugin implements Plugin<Project> {
                 def projectOptions = getProjectOptions()
                 def enumValue = resolveEnumValue("ENABLE_IN_PROCESS_AAPT2", Class.forName("com.android.build.gradle.options.BooleanOption"))
                 aapt2JniEnabled = projectOptions.get(enumValue)
+                if (isAapt2JniAndAapt2DaemonModeDeprecated()) {
+                    aapt2JniEnabled = false
+                }
             } catch (Exception e) {
                 aapt2JniEnabled = false
             }
@@ -117,6 +135,9 @@ class CompatPlugin implements Plugin<Project> {
                 def projectOptions = getProjectOptions()
                 def enumValue = resolveEnumValue("ENABLE_DAEMON_MODE_AAPT2", Class.forName("com.android.build.gradle.options.BooleanOption"))
                 aapt2DaemonEnabled = projectOptions.get(enumValue)
+                if (isAapt2JniAndAapt2DaemonModeDeprecated()) {
+                    aapt2DaemonEnabled = false
+                }
             } catch (Exception e) {
                 aapt2DaemonEnabled = false
             }
