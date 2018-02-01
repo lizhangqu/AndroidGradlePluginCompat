@@ -576,7 +576,7 @@ class CompatPlugin implements Plugin<Project> {
                                                     moduleComponentId.getGroup() + ":" + moduleComponentId.getModule(),
                                                     moduleComponentId.getVersion())
                                         } else {
-                                            getLogger()
+                                            project.getLogger()
                                                     .warn(
                                                     "Unknown ComponentIdentifier type: "
                                                             + id.getClass().getCanonicalName())
