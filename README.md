@@ -18,11 +18,9 @@ dependencies {
 ```
 
 目前只支持如下版本
- - android gradle plugin [1.5.0,2.2.0), 不支持传递依赖 ，且gradle版本必须为2.10以上
- - android gradle plugin [2.2.0,2,5.0), 支持传递依赖 
- - android gradle plugin [2.5.0,3.1.0], 支持传递依赖 
+ - android gradle plugin [1.3.0,3.1.0], 支持传递依赖 
  
-小于2.2.0的版本也是支持，但是不支持传递依赖
+小于1.3.0的版本不支持，抛异常
 
 ### aapt2是否开启
 
