@@ -365,6 +365,28 @@ class CompatPlugin implements Plugin<Project> {
             }
         }
 
+
+        //redirect warning log to info log
+        def listenerBackedLoggerContext = project.getLogger().getMetaClass().getProperty(project.getLogger(), "context")
+        def originalOutputEventListener = listenerBackedLoggerContext.getOutputEventListener()
+        def originalOutputEventLevel = listenerBackedLoggerContext.getLevel()
+        listenerBackedLoggerContext.setOutputEventListener({ def outputEvent ->
+            def logLevel = originalOutputEventLevel.name()
+            if (!("QUIET".equalsIgnoreCase(logLevel) || "ERROR".equalsIgnoreCase(logLevel))) {
+                if ("WARN".equalsIgnoreCase(outputEvent.getLogLevel().name())) {
+                    String message = outputEvent.getMessage()
+                    //Provided dependencies can only be jars.
+                    //provided dependencies can only be jars.
+                    if (message != null && (message.contains("Provided dependencies can only be jars.") || message.contains("provided dependencies can only be jars. "))) {
+                        project.logger.info(message)
+                        return
+                    }
+                }
+            }
+            if (originalOutputEventListener != null) {
+                originalOutputEventListener.onOutput(outputEvent)
+            }
+        })
     }
 
 }
