@@ -8,6 +8,7 @@ import org.gradle.api.artifacts.component.ComponentIdentifier
 import org.gradle.api.artifacts.component.ModuleComponentIdentifier
 import org.gradle.api.artifacts.component.ProjectComponentIdentifier
 import org.gradle.api.artifacts.result.ResolvedArtifactResult
+import org.gradle.util.GFileUtils
 import java.lang.reflect.Field
 
 /**
@@ -25,6 +26,11 @@ class CompatPlugin implements Plugin<Project> {
         project.ext.getAndroidGradlePluginVersionCompat = this.&getAndroidGradlePluginVersionCompat
         project.ext.isJenkins = this.&isJenkins
         project.ext.providedAarCompat = this.&providedAarCompat
+
+        project.ext.getPublishApFileCompat = this.&getPublishApFileCompat
+        project.ext.getRDirCompat = this.&getRDirCompat
+        project.ext.getRFileCompat = this.&getRFileCompat
+        project.ext.getPackageForRCompatCompat = this.&getPackageForRCompatCompat
     }
 
     static <T> T resolveEnumValue(String value, Class<T> type) {
@@ -387,6 +393,168 @@ class CompatPlugin implements Plugin<Project> {
                 originalOutputEventListener.onOutput(outputEvent)
             }
         })
+    }
+
+    /**
+     * R.java包名兼容获取
+     */
+    String packageForRCompat(def processAndroidResourceTask) {
+        if (processAndroidResourceTask == null) {
+            return null
+        }
+        String packageForR = null
+        try {
+            packageForR = processAndroidResourceTask.getPackageForR()
+        } catch (Exception e) {
+            project.logger.info(e.getMessage())
+        }
+        if (packageForR == null) {
+            try {
+                packageForR = processAndroidResourceTask.getOriginalApplicationId()
+            } catch (Exception e) {
+                project.logger.info(e.getMessage())
+            }
+        }
+        return packageForR
+    }
+    /**
+     * R.java输出路径兼容获取
+     */
+    File rFileDirCompat(def processAndroidResourceTask) {
+        if (processAndroidResourceTask == null) {
+            return null
+        }
+        File rFileDir = processAndroidResourceTask.getSourceOutputDir()
+        GFileUtils.mkdirs(rFileDir)
+        return rFileDir
+    }
+
+    /**
+     * resources.ap_输出路径兼容获取
+     */
+    File apFileCompat(def processAndroidResourceTask) {
+        if (processAndroidResourceTask == null) {
+            return null
+        }
+        File apFile = null
+        try {
+            apFile = processAndroidResourceTask.getPackageOutputFile()
+        } catch (Exception e) {
+            project.logger.info(e.getMessage())
+        }
+
+        String variantName = null
+        if (apFile == null) {
+            try {
+                variantName = processAndroidResourceTask.getMetaClass().getMetaProperty("variantName").getProperty(processAndroidResourceTask)
+                File resPackageOutputFolder = processAndroidResourceTask.getResPackageOutputFolder()
+                apFile = new File(resPackageOutputFolder, "resources" + "-" + variantName + ".ap_");
+            } catch (Exception e) {
+                project.logger.info(e.getMessage())
+            }
+        }
+
+        if (apFile == null) {
+            apFile = project.file("build${File.separator}intermediates${File.separator}res${File.separator}resources" + "-" + variantName + ".ap_")
+        }
+        return apFile
+    }
+
+    /**
+     * 暴露给外界获取publish ap的函数
+     */
+    File getPublishApFileCompat(String variantName) {
+        if (variantName == null || variantName.length() == 0) {
+            throw new GradleException("variantName 不能为空，且必须是驼峰形式")
+        }
+        def processAndroidResourceTask = project.tasks.findByName("process${variantName.capitalize()}Resources")
+        File originalApFile = apFileCompat(processAndroidResourceTask)
+        if (originalApFile == null) {
+            String androidGradlePluginVersion = getAndroidGradlePluginVersionCompat()
+            if (androidGradlePluginVersion.startsWith("0.") || androidGradlePluginVersion.startsWith("1.") || androidGradlePluginVersion.startsWith("2.")) {
+                //驼峰转换为-分隔
+                int length = variantName.length()
+                StringBuilder sb = new StringBuilder(length)
+                for (int i = 0; i < length; i++) {
+                    char c = variantName.charAt(i);
+                    if (Character.isUpperCase(c)) {
+                        sb.append("-")
+                        sb.append(Character.toLowerCase(c))
+                    } else {
+                        sb.append(c)
+                    }
+                }
+                return project.file("build${File.separator}intermediates${File.separator}res${File.separator}resources-${sb}.ap_")
+            } else {
+                //驼峰转换为对应的目录和文件名
+                int length = variantName.length()
+                StringBuilder dirName = new StringBuilder(length)
+                for (int i = 0; i < length; i++) {
+                    char c = variantName.charAt(i);
+                    if (Character.isUpperCase(c)) {
+                        dirName.append(File.separator)
+                        dirName.append(Character.toLowerCase(c))
+                    } else {
+                        dirName.append(c)
+                    }
+                }
+                return project.file("build${File.separator}intermediates${File.separator}res${File.separator}${dirName}${File.separator}resources-${variantName}.ap_")
+            }
+        }
+        return originalApFile
+    }
+
+    /**
+     * 暴露给外界获取R.java除去包名路径的函数，必须在project.afterEvaluate中调用，否则获取到的是null
+     */
+    File getRDirCompat(String variantName) {
+        if (variantName == null || variantName.length() == 0) {
+            throw new GradleException("variantName 不能为空，且必须是驼峰形式")
+        }
+        def processAndroidResourceTask = project.tasks.findByName("process${variantName.capitalize()}Resources")
+        File rDir = rFileDirCompat(processAndroidResourceTask)
+        if (rDir == null) {
+            int length = variantName.length()
+            StringBuilder dirName = new StringBuilder(length)
+            for (int i = 0; i < length; i++) {
+                char c = variantName.charAt(i);
+                if (Character.isUpperCase(c)) {
+                    dirName.append(File.separator)
+                    dirName.append(Character.toLowerCase(c))
+                } else {
+                    dirName.append(c)
+                }
+            }
+            return project.file("build${File.separator}generated${File.separator}source${File.separator}r${File.separator}${dirName}")
+        }
+        return rDir
+    }
+
+    /**
+     * 暴露给外界获取R.java路径的函数，必须在project.afterEvaluate中调用，否则获取到的是null
+     */
+    File getRFileCompat(String variantName) {
+        if (variantName == null || variantName.length() == 0) {
+            throw new GradleException("variantName 不能为空，且必须是驼峰形式")
+        }
+        File rDir = getRDirCompat(variantName)
+        String packageForR = getPackageForRCompatCompat(variantName)
+        return new File(new File(rDir, packageForR.replaceAll("\\.", File.separator)), "R.java")
+    }
+
+    /**
+     * 暴露给外界获取R.java包名的函数，必须在project.afterEvaluate中调用，否则获取到的是null
+     */
+    String getPackageForRCompatCompat(String variantName) {
+        if (variantName == null || variantName.length() == 0) {
+            throw new GradleException("variantName 不能为空，且必须是驼峰形式")
+        }
+        def processAndroidResourceTask = project.tasks.findByName("process${variantName.capitalize()}Resources")
+        String packageForR = packageForRCompat(processAndroidResourceTask)
+        if (packageForR == null) {
+            return project.android.defaultConfig.applicationId
+        }
+        return packageForR
     }
 
 }
