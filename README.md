@@ -63,3 +63,28 @@ String androidGradlePluginVersion = getAndroidGradlePluginVersionCompat()
 ```
 boolean onJenkins = isJenkins()
 ```
+
+### 获取R.java文件中的包名
+
+```
+String packageForR = getPackageForRCompatCompat('release')
+```
+
+### 获取R.java文件路径
+
+```
+File rFile = getRFileCompat('release')
+```
+
+
+### 获取R.java文件去除包名后的父路径
+
+```
+File rDir = getRDirCompat('release')
+```
+
+### 获取resource.ap_文件路径
+
+```
+File apFile = getPublishApFileCompat('release')
+```
