@@ -44,3 +44,17 @@ dependencies {
 
 }
 
+
+project.afterEvaluate {
+    project.logger.error "host getPublishApFileCompat:${getPublishApFileCompat('release')}"
+    project.logger.error "host getRDirCompat:${getRDirCompat('release')}"
+    project.logger.error "host getRFileCompat:${getRFileCompat('release')}"
+    project.logger.error "host getPackageForRCompatCompat:${getPackageForRCompatCompat('release')}"
+    project.logger.error "host R File exists:${getRFileCompat('release').exists()}"
+}
+
+project.logger.error "getPublishApFileCompat:${getPublishApFileCompat('release')}"
+project.logger.error "getRDirCompat:${getRDirCompat('release')}"
+project.logger.error "getRFileCompat:${getRFileCompat('release')}"
+project.logger.error "getPackageForRCompatCompat:${getPackageForRCompatCompat('release')}"
+project.logger.error "R File exists:${getRFileCompat('release').exists()}"
